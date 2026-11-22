@@ -137,7 +137,7 @@ export function buildCaptionBurn(cues, styleId, width, height, sizeId, lineHeigh
       }
       const raw =
         `drawtext=fontfile=${CAPTION_FONT}:textfile=${name}:${st.dt(bw, fs)}` +
-        `:fontsize=${fs}:x=(w-text_w)/2:y=${yParam}${alphaParam}:enable=between(t,${s},${e})`;
+        `:fontsize=${fs}:x=(w-text_w)/2:y=${yParam}${alphaParam}:enable=gte(t,${s})*lt(t,${e})`; // [MOD] end-exclusive, like the preview: no 1-frame overlap between back-to-back cues
       filters.push(escapeFilter(raw));
     }
   }

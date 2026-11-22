@@ -10,7 +10,7 @@ import { getWaveformPeaks, waveBucketCount } from "../lib/waveform";
 import { renderVideo, cancelRender, getActiveRender, reconnectRender, probeBackend } from "../lib/serverRender";
 import { renderWebCodecs, webCodecsCanRender, pickRenderProfile, startKeepAwake, crfTargetBitrate } from "../lib/webcodecsRender";
 import { DEFAULT_TRANSITION_DURATION, mixTransitions } from "../lib/transitions";
-import { parseTranscript } from "../lib/captions";
+import { parseTranscript, captionToWordCues } from "../lib/captions";
 import { makeTextOverlay, drawTextOverlays, textOverlayFontPx } from "../lib/textOverlay";
 import { makeLowerThird, clampLowerThird, captureThumb } from "../lib/lowerThird";
 import { sanitizeVoiceFx } from "../lib/voiceFx";
@@ -232,6 +232,7 @@ export default function Home() {
   const [captionLineHeight, setCaptionLineHeight] = useState(null); // null = per-style default
   const [captionFontScale, setCaptionFontScale] = useState(null);   // null = use the size preset
   const [captionAnimation, setCaptionAnimation] = useState("none"); // caption entrance animation (preview == render)
+  const [captionWords, setCaptionWords] = useState(0); // [MOD] 0 = whole lines; 1/2/3 = that many words at a time
   const [importing, setImporting] = useState(null);   // { done, total } while decoding imports
   const [importNote, setImportNote] = useState(null);  // transient "skipped X files" toast
   const importNoteTimerRef = useRef(0);
@@ -654,6 +655,14 @@ export default function Home() {
     [captionRaw, audioDuration]
   );
   const captionCues = captionParse.cues;
+  // [MOD] What is actually drawn/burned. Word mode splits each line into words; the
+  // line-level `captionCues` stay as they are for the narration sync below. The
+  // entrance animation is turned off in word mode (a word only lasts ~0.3 s).
+  const captionDrawCues = useMemo(
+    () => (captionWords > 0 ? captionToWordCues(captionCues, captionWords) : captionCues),
+    [captionCues, captionWords]
+  );
+  const captionAnimationUsed = captionWords > 0 ? "none" : captionAnimation;
   const captionError = captionParse.error;
 
   // Decode the voiceover once and find each line's real speech onset. Runs when
@@ -992,7 +1001,7 @@ export default function Home() {
     v: 1,
     settings: { aspect, fps, renderQuality, transitionDuration, fadeIn, fadeOut, motionAmount, fxAmount, trimEnd },
     maps: { motionByName, fxByName, trimByName, volumeByName, muteByName, fitByName },
-    captions: { captionRaw, captionName, captionsOn, captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimation },
+    captions: { captionRaw, captionName, captionsOn, captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimation, captionWords },
     transitionsByName,
     slots: slots.map((s) => ({
       id: s.id, seconds: s.seconds, empty: !!s.empty,
@@ -1014,7 +1023,7 @@ export default function Home() {
     built,
   }), [aspect, fps, renderQuality, transitionDuration, fadeIn, fadeOut, motionAmount, fxAmount, trimEnd,
       motionByName, fxByName, trimByName, volumeByName, muteByName, fitByName,
-      captionRaw, captionName, captionsOn, captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimation,
+      captionRaw, captionName, captionsOn, captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimation, captionWords,
       transitionsByName, slots, audioFile, bgClips, sfx, sfxUploads, sfxMaster, voiceFx, voiceLevel, built]);
 
   const saveCurrent = useCallback(async () => {
@@ -1045,7 +1054,7 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [view, currentProject, loadingProject, slots, transitionsByName, aspect, fps, renderQuality, transitionDuration,
       fadeIn, fadeOut, motionByName, motionAmount, trimByName, volumeByName, muteByName, fitByName, trimEnd,
-      captionRaw, captionName, captionsOn, captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimation,
+      captionRaw, captionName, captionsOn, captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimation, captionWords,
       audioFile, bgClips, sfx, sfxUploads, sfxMaster, built]);
 
   const openProject = useCallback(async (id) => {
@@ -1137,6 +1146,7 @@ export default function Home() {
       setCaptionSize(cp.captionSize ?? "md"); setCaptionLineHeight(cp.captionLineHeight ?? null);
       setCaptionFontScale(cp.captionFontScale ?? null);
       setCaptionAnimation(cp.captionAnimation ?? "none");
+      setCaptionWords(cp.captionWords ?? 0);
       idRef.current = d.idCounter || newSlots.length;
       setBuilt(!!d.built);
     } finally { setLoadingProject(false); }
@@ -1218,12 +1228,12 @@ export default function Home() {
       const volumes = exportClips.map((c) =>
         Object.prototype.hasOwnProperty.call(videosByName, c.name)
           ? (muteByName[c.name] ? 0 : (volumeByName[c.name] == null ? 0.5 : volumeByName[c.name])) : 0);
-      const captions = captionsOn && captionCues.length ? captionCues : null;
+      const captions = captionsOn && captionDrawCues.length ? captionDrawCues : null;
       const blob = await renderVideo({
         clips: exportClips, imagesByName, videosByName, audioFile,
         width: renderDims.width, height: renderDims.height, fps,
         transitions, transitionDuration, motions, motionAmount, fx, fxAmount, trims, volumes, speeds, fadeIn, fadeOut,
-        captions, captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimation,
+        captions, captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimation: captionAnimationUsed,
         sfx: mixedAudio,
         voiceFx,
         voiceLevel,
@@ -1245,7 +1255,7 @@ export default function Home() {
     }
   }, [clips, exportDuration, imagesByName, videosByName, audioFile, renderDims, fps, transitionsByName, transitionDuration,
       motionByName, motionAmount, fxByName, fxAmount, trimByName, volumeByName, muteByName, fitByName, videoInfoByName, fadeIn, fadeOut,
-      captionsOn, captionCues, captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimation, mixedAudio,
+      captionsOn, captionDrawCues, captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimationUsed, mixedAudio,
       voiceFx, voiceLevel,
       overlayFile, overlayUrl, overlayDuration, overlayOpacity, overlayBlendMode, overlayLoop, overlayEnabled,
       watermarkFile, watermarkUrl, watermarkSize, watermarkX, watermarkY, watermarkOpacity, watermarkEnabled,
@@ -1340,8 +1350,8 @@ export default function Home() {
           clips: exportClips, width: renderDims.width, height: renderDims.height, fps, bitrate, profile,
           transitions, transitionDuration, motions, motionAmount, fx, fxAmount, audioFile,
           videosByName, trims, speeds, volumes,
-          cues: captionsOn && captionCues.length ? captionCues : null,
-          captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimation,
+          cues: captionsOn && captionDrawCues.length ? captionDrawCues : null,
+          captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimation: captionAnimationUsed,
           sfx: mixedAudio,
           voiceFx,
           voiceLevel,
@@ -1421,7 +1431,7 @@ export default function Home() {
     }
   }, [clips, exportDuration, transitionsByName, motionByName, fxByName, imagesByName, renderDims, fps, transitionDuration, motionAmount, fxAmount, audioFile,
       videosByName, videoInfoByName, fitByName, trimByName, volumeByName, muteByName, currentProject, flashDone, wcProfile,
-      captionsOn, captionCues, captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimation,
+      captionsOn, captionDrawCues, captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimationUsed,
       mixedAudio, voiceFx, voiceLevel,
       overlayFile, overlayUrl, overlayDuration, overlayOpacity, overlayBlendMode, overlayLoop, overlayEnabled,
       watermarkFile, watermarkUrl, watermarkSize, watermarkX, watermarkY, watermarkOpacity, watermarkEnabled,
@@ -1651,7 +1661,8 @@ export default function Home() {
           fitByName={fitByName} setFit={setFit}
           trimEnd={exportDuration} setTrimEnd={setTrimEnd} exportDuration={exportDuration}
           undo={undo} redo={redo} canUndo={canUndo} canRedo={canRedo}
-          captionCues={captionCues} captionsOn={captionsOn} setCaptionsOn={setCaptionsOn}
+          captionCues={captionCues} captionDrawCues={captionDrawCues} captionsOn={captionsOn} setCaptionsOn={setCaptionsOn}
+          captionWords={captionWords} setCaptionWords={setCaptionWords}
           captionStyle={captionStyle} setCaptionStyle={setCaptionStyle}
           captionAnimation={captionAnimation} setCaptionAnimation={setCaptionAnimation}
           captionSize={captionSize} setCaptionSize={setCaptionSize}

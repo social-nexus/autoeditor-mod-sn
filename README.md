@@ -15,6 +15,7 @@ Transforma **imagens/vídeos nomeados com o tempo em que devem entrar** + **uma 
 | 3 | **Milissegundos nos nomes dos arquivos.** Além de `0-05`, agora vale `0-03-135` (minuto-segundo-milissegundo). Os tempos com milissegundos também aparecem na bandeja de importação e nas dicas da timeline. | `lib/timestamp.js`, `lib/__tests__/timestamp.test.js`, `app/page.js`, `components/Timeline.js` |
 | 4 | **Iniciadores em português** para Windows, macOS (Intel e Apple Silicon) e Linux. A lógica é a do projeto base; só mudei as mensagens. | `1 Run-Windows.bat`, `1 Run-macOS-Intel.command`, `1 Run-macOS-Silicon.command`, `1 Run-Linux.sh` |
 | 5 | **Motor de render: FFmpeg (GPU) por padrão.** O botão **Render MP4** usa o FFmpeg do servidor local (placa NVIDIA via NVENC, quando disponível) em vez do encoder do navegador, que podia travar no meio. O interruptor **Render engine**, acima do botão, volta ao render do navegador (WebCodecs). | `components/Editor.js`, `app/page.js` |
+| 6 | **Legenda palavra por palavra.** Na aba **Captions** há o seletor **Words on screen** (*Full line / 1 word / 2 words / 3 words*). Com 1 palavra, aparece uma palavra por vez, no momento em que é falada. Funciona no preview e nos dois tipos de render. | `lib/captions.js` (`captionToWordCues`), `app/page.js`, `components/Editor.js`, `lib/__tests__/captions.test.js` |
 
 Todos os trechos alterados no código têm o comentário `[MOD]`. O histórico detalhado está em [`CHANGELOG-MOD.md`](CHANGELOG-MOD.md) e o passo a passo de uso em [`MANUAL-DE-USO.md`](MANUAL-DE-USO.md).
 
@@ -67,7 +68,7 @@ No macOS, se aparecer um aviso de segurança, clique com o botão direito no arq
 - **Edição:** importar arrastando, cortar, ajustar encaixe (cover/contain), reordenar na timeline.
 - **Transições:** fade, wipe, zoom e slide, com duração ajustável.
 - **Áudio:** várias camadas, volume por camada, sincronização automática de voz/música.
-- **Texto:** legendas a partir de SRT/SSA ou transcrições com tempo, com estilo, tamanho e animação.
+- **Texto:** legendas a partir de SRT/SSA ou transcrições com tempo, com estilo, tamanho e animação, e **[MOD] modo palavra por palavra** (1, 2 ou 3 palavras por vez).
 - **Overlay e marca d'água:** vídeo/imagem com opacidade e modos de mistura.
 - **Exportação:** resolução completa, 720p ou 4K; 24/30/60 fps; render com WebCodecs ou FFmpeg, com barra de progresso.
 - **Projeto:** salvar e retomar todo o estado em um arquivo JSON.

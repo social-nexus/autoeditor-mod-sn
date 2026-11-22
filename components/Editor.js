@@ -145,7 +145,7 @@ export default function Editor({
   fitByName = {}, setFit,
   trimEnd, setTrimEnd, exportDuration,
   undo, redo, canUndo, canRedo,
-  captionCues, captionsOn, setCaptionsOn, captionStyle, setCaptionStyle,
+  captionCues, captionDrawCues, captionWords = 0, setCaptionWords, captionsOn, setCaptionsOn, captionStyle, setCaptionStyle,
   captionSize, setCaptionSize, captionLineHeight, setCaptionLineHeight,
   captionFontScale, setCaptionFontScale,
   captionAnimation, setCaptionAnimation,
@@ -928,9 +928,11 @@ export default function Editor({
     }
 
     // Captions burn in before the fades, so the fade dims them too.
-    if (captionsOn && captionCues && captionCues.length) {
-      const cue = captionCueAt(captionCues, t);
-      if (cue) drawCaption(ctx, cue.text, W, H, captionStyle, captionFontPx(H, captionSize, captionFontScale), captionLineHeight, captionAnimation, t - cue.start, cue.end - cue.start);
+    // [MOD] draw the word-split cues in word mode (animation is off there, like the render)
+    const drawCues = captionDrawCues || captionCues;
+    if (captionsOn && drawCues && drawCues.length) {
+      const cue = captionCueAt(drawCues, t);
+      if (cue) drawCaption(ctx, cue.text, W, H, captionStyle, captionFontPx(H, captionSize, captionFontScale), captionLineHeight, captionWords > 0 ? "none" : captionAnimation, t - cue.start, cue.end - cue.start);
     }
 
     // Timed text overlays (titles/labels) — same layer as WebCodecs + ffmpeg burn.
@@ -959,7 +961,7 @@ export default function Editor({
     }
   }, [clips, imageEls, transitionsByName, transitionDuration, motionByName, motionAmount, fxByName, fxAmount,
       fadeIn, fadeOut, duration, exportDuration, playing, videoInfoByName, videoParams, volumeByName,
-      captionsOn, captionCues, captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimation,
+      captionsOn, captionCues, captionDrawCues, captionWords, captionStyle, captionSize, captionLineHeight, captionFontScale, captionAnimation,
       overlayEnabled, overlayUrl, overlayOpacity, overlayBlendMode, overlayDuration,
       watermarkEnabled, watermarkUrl, watermarkSize, watermarkX, watermarkY, watermarkOpacity,
       logoEnabled, logoUrl, logoCorner, logoSize, logoOpacity,
@@ -1716,13 +1718,33 @@ if (a.paused) {
                   ))}
                 </div>
 
-                <div className="mini-h" style={{ marginTop: 12 }}>Entrance Animation</div>
+                {/* [MOD] word-by-word captions */}
+                <div className="mini-h" style={{ marginTop: 12 }}>Words on screen</div>
+                <div className="seg">
+                  {[[0, "Full line"], [1, "1 word"], [2, "2 words"], [3, "3 words"]].map(([n, lbl]) => (
+                    <button
+                      key={n}
+                      type="button"
+                      className={captionWords === n ? "is-on" : ""}
+                      onClick={() => setCaptionWords && setCaptionWords(n)}
+                    >{lbl}</button>
+                  ))}
+                </div>
+                {captionWords > 0 && (
+                  <div className="mini-h" style={{ marginTop: 6, opacity: 0.75 }}>
+                    Each word appears as it is spoken, timed across its line by word length. Entrance animation is off in this mode.
+                  </div>
+                )}
+
+                <div className="mini-h" style={{ marginTop: 12, opacity: captionWords > 0 ? 0.45 : 1 }}>Entrance Animation</div>
                 <div className="transitions__chips">
                   {CAPTION_ANIMATION_LIST.map((a) => (
                     <button
                       key={a.id}
                       type="button"
                       className={`trchip ${captionAnimation === a.id ? "is-on" : ""}`}
+                      disabled={captionWords > 0}
+                      style={captionWords > 0 ? { opacity: 0.45, cursor: "not-allowed" } : undefined}
                       onClick={() => setCaptionAnimation(a.id)}
                     >
                       {a.label}

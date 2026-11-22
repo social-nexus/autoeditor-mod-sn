@@ -67,6 +67,26 @@ Como a timeline é montada:
 - **Centro — pré-visualização** com os controles de reprodução.
 - **Direita — Export:** proporção (16:9 ou 9:16), FPS, qualidade e o botão de exportar.
 
+### Legenda palavra por palavra
+
+Na aba **Captions**, depois de enviar o arquivo de legenda (SRT/VTT/TXT com tempo), use o seletor **Words on screen**:
+
+| Opção | O que aparece na tela |
+|-------|-----------------------|
+| **Full line** | A linha inteira, como antes. |
+| **1 word** | Uma palavra por vez, trocando no momento em que é falada. |
+| **2 words** / **3 words** | Grupos de 2 ou 3 palavras por vez. |
+
+Como funciona e o que esperar:
+
+- **Tempo de cada palavra.** Uma legenda normal só tem o início e o fim de cada linha. A ferramenta divide o tempo da linha entre as palavras pelo tamanho delas (palavras longas ficam mais tempo, e a palavra antes de vírgula ou ponto fica um pouco mais). Na prática fica bem próximo da fala, mas é uma estimativa.
+- **Tempo exato.** Se o seu arquivo já tiver **uma palavra por legenda** (SRT com tempo por palavra, por exemplo gerado com Whisper), os tempos são usados exatamente como estão.
+- **Pausas.** Entre uma linha e a seguinte, a tela fica sem legenda, como na fala.
+- **Animação de entrada.** Fica desligada neste modo, porque cada palavra dura só uns 0,3 s. Os botões ficam desativados enquanto o modo palavra estiver ligado.
+- **Estilo, tamanho e posição** valem igual: tudo o que você escolhe em Style, Size e Line spacing se aplica às palavras.
+- **Sincronia imagem↔narração** continua usando as linhas inteiras, sem mudar.
+- **Render.** Funciona nos dois motores. No render **FFmpeg** (o padrão), cada palavra vira um filtro de legenda: em vídeos curtos (Shorts) não há diferença perceptível, mas em vídeos longos (uns 10 minutos ou mais) com poucos clipes o render fica alguns minutos mais lento. Acima de 60 clipes o render já é dividido em partes e o custo cai bastante. No render pelo navegador (**Browser (WebCodecs)**) não há diferença de velocidade.
+
 ### Timeline
 
 | Faixa | O que é |
